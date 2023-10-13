@@ -1,0 +1,155 @@
+import tkinter as tk
+from tkinter import ttk
+import pandas as pd
+import random
+import time
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from sklearn.ensemble import IsolationForest
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
+
+# Função para gerar dados fictícios
+def generate_fake_data():
+    countries = ["Country1", "Country2", "Country3"]
+    goals = ["Goal1", "Goal2", "Goal3"]
+    indicators = ["Indicator1", "Indicator2", "Indicator3"]
+
+    country = random.choice(countries)
+    goal = random.choice(goals)
+    indicator = random.choice(indicators)
+    value = random.uniform(0, 100)
+
+    return country, goal, indicator, value
+
+# Função para prever tendências usando um modelo de regressão
+def predict_trends(X_train, y_train, X_test):
+    regressor = RandomForestRegressor()
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.predict(X_test)
+    return y_pred
+
+# Função para avaliar a qualidade do modelo
+def evaluate_model(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_pred = predict_trends(X_train, y_train, X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    return mse
+
+# Função para atualizar e processar dados em tempo real
+def real_time_data_processing():
+    def update_data():
+        nonlocal df
+        country, goal, indicator, value = generate_fake_data()
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        new_row = {"Country": country, "Goal": goal, "Indicator": indicator, "Value": value, "Timestamp": timestamp}
+        df = df.append(new_row, ignore_index=True)
+        
+        treeview.delete(*treeview.get_children())
+        for i, row in df.iterrows():
+            treeview.insert('', 'end', values=(row["Country"], row["Goal"], row["Indicator"], row["Value"], row["Timestamp"]))
+
+        ax_scatter.clear()
+        ax_scatter.scatter(df.index, df["Value"], marker='o', label="Value")
+        ax_scatter.set_xlabel("Sample")
+        ax_scatter.set_ylabel("Value")
+        ax_scatter.set_title("Evolução do Desenvolvimento Sustentável")
+        ax_scatter.grid(True)
+
+        X = df[["Value"]]
+        clf = IsolationForest(contamination=0.1)
+        df["Anomaly"] = clf.fit_predict(X)
+
+        if -1 in df["Anomaly"].values:
+            alert_label.config(text="ALERTA: Ponto crítico detectado!")
+            evaluate_and_suggest_improvements()
+
+        ax_line.clear()
+        ax_line.plot(df.index, df.groupby("Timestamp")["Value"].mean(), label="Mean Value", color='red')
+        ax_line.set_xlabel("Sample")
+        ax_line.set_ylabel("Mean Value")
+        ax_line.set_title("Tendência de Desenvolvimento Sustentável")
+        ax_line.legend()
+        ax_line.grid(True)
+
+        canvas.draw()
+        root.after(5000, update_data)
+
+    def evaluate_and_suggest_improvements():
+        goal_data = df.groupby("Goal")["Value"].mean().reset_index()
+        X = goal_data[["Value"]]
+        y = goal_data["Goal"]
+
+        mse = evaluate_model(X, y)
+
+        if mse > 10:
+            suggestion_label.config(text="Sugestão: Implementar estratégias para melhorar o progresso em metas.")
+        else:
+            suggestion_label.config(text="")
+
+    def export_data():
+        df.to_csv("development_sustainability_data.csv", index=False)
+        export_label.config(text="Dados exportados com sucesso!", fg="green")
+
+    root = tk.Tk()
+    root.title("Processamento de Dados em Tempo Real")
+
+    df = pd.DataFrame(columns=["Country", "Goal", "Indicator", "Value", "Timestamp"])
+
+    treeview = ttk.Treeview(root, columns=("Country", "Goal", "Indicator", "Value", "Timestamp"), show="headings")
+    treeview.heading("Country", text="Country")
+    treeview.heading("Goal", text="Goal")
+    treeview.heading("Indicator", text="Indicator")
+    treeview.heading("Value", text="Value")
+    treeview.heading("Timestamp", text="Timestamp")
+    treeview.pack()
+
+    fig = Figure(figsize=(12, 6))
+    ax_scatter = fig.add_subplot(121)
+    ax_line = fig.add_subplot(122)
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas_widget = canvas.get_tk_widget()
+    canvas_widget.pack()
+
+    alert_label = tk.Label(root, text="")
+    alert_label.pack()
+
+    suggestion_label = tk.Label(root, text="")
+    suggestion_label.pack()
+
+    export_button = tk.Button(root, text="Exportar Dados", command=export_data)
+    export_button.pack()
+
+    export_label = tk.Label(root, text="")
+    export_label.pack()
+
+    # Adicionando uma aba para análise de dados
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill='both', expand=True)
+
+    data_analysis_tab = ttk.Frame(notebook)
+    notebook.add(data_analysis_tab, text='Análise de Dados')
+
+    # Adicionando estatísticas descritivas
+    descriptive_stats_label = tk.Label(data_analysis_tab, text="Estatísticas Descritivas:")
+    descriptive_stats_label.pack()
+
+    descriptive_stats_text = tk.Text(data_analysis_tab, height=10, width=50)
+    descriptive_stats_text.pack()
+
+    # Adicionando uma análise de correlação
+    correlation_analysis_label = tk.Label(data_analysis_tab, text="Análise de Correlação:")
+    correlation_analysis_label.pack()
+
+    correlation_analysis_text = tk.Text(data_analysis_tab, height=10, width=50)
+    correlation_analysis_text.pack()
+
+    def perform_data_analysis():
+        # Estatísticas descritivas
+        descriptive_stats = df.describe()
+        descriptive_stats_text.delete('1.0', tk.END)
+        descriptive
