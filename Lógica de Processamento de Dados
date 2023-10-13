@@ -1,0 +1,93 @@
+import tkinter as tk
+from tkinter import ttk
+import pandas as pd
+import random
+import time
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from sklearn.ensemble import IsolationForest
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
+
+# Função para gerar dados fictícios
+def generate_fake_data():
+    countries = ["Country1", "Country2", "Country3"]
+    goals = ["Goal1", "Goal2", "Goal3"]
+    indicators = ["Indicator1", "Indicator2", "Indicator3"]
+
+    country = random.choice(countries)
+    goal = random.choice(goals)
+    indicator = random.choice(indicators)
+    value = random.uniform(0, 100)
+
+    return country, goal, indicator, value
+
+# Função para prever tendências usando um modelo de regressão
+def predict_trends(X_train, y_train, X_test):
+    regressor = RandomForestRegressor()
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.predict(X_test)
+    return y_pred
+
+# Função para avaliar a qualidade do modelo
+def evaluate_model(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_pred = predict_trends(X_train, y_train, X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    return mse
+
+# Função para realizar análise de dados
+def perform_data_analysis():
+    descriptive_stats = df.describe()
+    correlation_matrix = df.corr()
+
+    descriptive_stats_text.delete('1.0', tk.END)
+    descriptive_stats_text.insert(tk.END, descriptive_stats)
+
+    correlation_analysis_text.delete('1.0', tk.END)
+    correlation_analysis_text.insert(tk.END, correlation_matrix)
+
+# Função para atualizar e processar dados em tempo real
+def update_data():
+    nonlocal df
+    country, goal, indicator, value = generate_fake_data()
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    new_row = {"Country": country, "Goal": goal, "Indicator": indicator, "Value": value, "Timestamp": timestamp}
+    df = df.append(new_row, ignore_index=True)
+    
+    treeview.delete(*treeview.get_children())
+    for i, row in df.iterrows():
+        treeview.insert('', 'end', values=(row["Country"], row["Goal"], row["Indicator"], row["Value"], row["Timestamp"]))
+
+    # Gráfico de dispersão
+    ax_scatter.clear()
+    ax_scatter.scatter(df.index, df["Value"], marker='o', label="Value")
+    ax_scatter.set_xlabel("Sample")
+    ax_scatter.set_ylabel("Value")
+    ax_scatter.set_title("Evolução do Desenvolvimento Sustentável")
+    ax_scatter.grid(True)
+
+    # Detecção de anomalias
+    X = df[["Value"]]
+    clf = IsolationForest(contamination=0.1)
+    df["Anomaly"] = clf.fit_predict(X)
+
+    # Alerta de anomalias
+    if -1 in df["Anomaly"].values:
+        alert_label.config(text="ALERTA: Ponto crítico detectado!")
+        evaluate_and_suggest_improvements()
+
+    # Gráfico de linhas (média)
+    ax_line.clear()
+    ax_line.plot(df.index, df.groupby("Timestamp")["Value"].mean(), label="Mean Value", color='red')
+    ax_line.set_xlabel("Sample")
+    ax_line.set_ylabel("Mean Value")
+    ax_line.set_title("Tendência de Desenvolvimento Sustentável")
+    ax_line.legend()
+    ax_line.grid(True)
+
+    # Previsões futuras
